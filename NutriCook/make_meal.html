@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Yemek Yap</title>
+    <style>
+        /* Önceki stil kodları */
+        body {
+    font-family: Arial, sans-serif;
+    background-image: url('uploads/bg.jpg'); /* Arka plan resmi */
+    background-color: #f5f5f5; /* Gri arka plan, resmi görünür kılmak için */
+    background-size: cover; /* Resmi sayfayı kaplayacak şekilde ayarla */
+    background-attachment: fixed; /* Arka planı sabit tutar */
+    color: #333; /* Koyu gri yazı rengi */
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+        h1 {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        input[type="text"],
+        textarea,
+        input[type="number"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .ingredient-container {
+            margin-top: 20px;
+        }
+        .ingredient-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .ingredient-item input[type="text"] {
+            width: calc(100% - 120px); /* Arama kutusunun genişliğini ayarla */
+            margin-right: 10px;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: calc(100% - 120px); /* Arama kutusunun genişliğine göre ayarla */
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        .dropdown-menu div {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .dropdown-menu div:hover {
+            background-color: #f1f1f1;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+        input[type="submit"]:active {
+            background-color: #388e3c;
+        }
+        .footer {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #333;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Yemek Yap</h1>
+    <div class="container">
+        <form id="mealForm" action="save_meal.php" method="post" enctype="multipart/form-data">
+            <label for="mealName">Yemek Adı:</label>
+            <input type="text" id="mealName" name="mealName" required>
+
+            <label for="mealDescription">Kısa Açıklama:</label>
+            <textarea id="mealDescription" name="mealDescription" rows="4" required></textarea>
+
+            <label for="photo">Yemek Fotoğrafı:</label>
+            <input type="file" id="photo" name="photo" accept="image/*">
+
+            <label for="laborCost">İşçilik Fiyatı:</label>
+            <input type="number" id="laborCost" name="laborCost" placeholder="İşçilik fiyatı" step="0.01" min="0" required>
+
+            <div id="ingredientContainer" class="ingredient-container">
+                <label>Malzemeler:</label>
+                <div class="ingredient-item">
+                    <input type="text" class="ingredientSearch" name="ingredientSearch[]" placeholder="Malzeme ara" oninput="filterDropdown(this)">
+                    <div class="dropdown-menu"></div>
+                    <input type="number" name="amount[]" placeholder="Miktar" step="0.01" min="0" required>
+                    <button type="button" onclick="removeIngredient(this)">Kaldır</button>
+                </div>
+            </div>
+
+            <button type="button" onclick="addIngredient()">Malzeme Ekle</button>
+            <input type="submit" value="Yemek Kaydet">
+        </form>
+    </div>
+
+    <div class="footer">
+        2024 © HEALTH CALCULATOR Tüm Hakları Saklıdır | TASARIM: <a href="https://www.linkedin.com/in/abd%C3%BClsamet-r%C3%B6zgar-31880122a/" target="_blank">SAMET RÖZGAR</a>
+    </div>
+
+    <script>
+        let ingredientsData = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('get_ingredients.php')
+                .then(response => response.json())
+                .then(data => {
+                    ingredientsData = data;
+                })
+                .catch(error => console.error('Error fetching ingredients:', error));
+        });
+
+        function addIngredient() {
+            const container = document.getElementById('ingredientContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'ingredient-item';
+            newItem.innerHTML = `
+                <input type="text" class="ingredientSearch" name="ingredientSearch[]" placeholder="Malzeme ara" oninput="filterDropdown(this)">
+                <div class="dropdown-menu"></div>
+                <input type="number" name="amount[]" placeholder="Miktar" step="0.01" min="0" required>
+                <button type="button" onclick="removeIngredient(this)">Kaldır</button>
+            `;
+            container.appendChild(newItem);
+
+            // Yeni öğedeki arama kutusu için olay dinleyicisi ekle
+            const searchInput = newItem.querySelector('.ingredientSearch');
+            searchInput.addEventListener('focus', () => showDropdown(searchInput));
+        }
+
+        function removeIngredient(button) {
+            const container = document.getElementById('ingredientContainer');
+            container.removeChild(button.parentElement);
+        }
+
+        function showDropdown(input) {
+            const dropdownMenu = input.nextElementSibling;
+            dropdownMenu.style.display = 'block';
+            populateDropdownMenu(input, dropdownMenu);
+        }
+
+        function populateDropdownMenu(input, dropdownMenu) {
+            dropdownMenu.innerHTML = ''; // Menü içeriğini temizle
+            const searchTerm = input.value.toLowerCase();
+            const filteredData = ingredientsData.filter(item =>
+                item.ad.toLowerCase().includes(searchTerm)
+            );
+            filteredData.forEach(item => {
+                const div = document.createElement('div');
+                div.textContent = item.ad;
+                div.dataset.id = item.id;
+                div.onclick = () => selectIngredient(div, input, dropdownMenu);
+                dropdownMenu.appendChild(div);
+            });
+            if (filteredData.length === 0) {
+                const div = document.createElement('div');
+                div.textContent = 'Bulunan Malzeme Yok';
+                div.classList.add('dropdown-item');
+                dropdownMenu.appendChild(div);
+            }
+        }
+
+        function filterDropdown(input) {
+            const dropdownMenu = input.nextElementSibling;
+            if (input.value.length > 0) {
+                showDropdown(input);
+            } else {
+                dropdownMenu.style.display = 'none';
+            }
+            populateDropdownMenu(input, dropdownMenu);
+        }
+
+        function selectIngredient(itemDiv, input, dropdownMenu) {
+            input.value = itemDiv.textContent;
+            dropdownMenu.style.display = 'none';
+        }
+
+        // Dışarı tıklama ile menüyü kapat
+        document.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('ingredientSearch')) {
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
